@@ -1,4 +1,4 @@
-package huobi
+package bibox
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-type HuoBi_V2 struct {
+type Bibox_V2 struct {
 	httpClient *http.Client
 	accountId,
 	baseUrl,
@@ -26,11 +26,11 @@ type response struct {
 	Errcode string          `json:"err-code"`
 }
 
-func NewV2(httpClient *http.Client, accessKey, secretKey, clientId string) *HuoBi_V2 {
-	return &HuoBi_V2{httpClient, clientId, "https://be.huobi.com", accessKey, secretKey}
+func NewV2(httpClient *http.Client, accessKey, secretKey, clientId string) *Bibox_V2 {
+	return &Bibox_V2{httpClient, clientId, "https://be.huobi.com", accessKey, secretKey}
 }
 
-func (hbV2 *HuoBi_V2) GetAccountId() (string, error) {
+func (hbV2 *Bibox_V2) GetAccountId() (string, error) {
 	path := "/v1/account/accounts"
 	params := &url.Values{}
 	hbV2.buildPostForm("GET", path, params)
@@ -54,7 +54,7 @@ func (hbV2 *HuoBi_V2) GetAccountId() (string, error) {
 	return hbV2.accountId, nil
 }
 
-func (hbV2 *HuoBi_V2) GetAccount() (*Account, error) {
+func (hbV2 *Bibox_V2) GetAccount() (*Account, error) {
 	path := fmt.Sprintf("/v1/account/accounts/%s/balance", hbV2.accountId)
 	params := &url.Values{}
 	params.Set("accountId-id", hbV2.accountId)
@@ -111,7 +111,7 @@ func (hbV2 *HuoBi_V2) GetAccount() (*Account, error) {
 	return acc, nil
 }
 
-func (hbV2 *HuoBi_V2) placeOrder(amount, price string, pair CurrencyPair, orderType string) (string, error) {
+func (hbV2 *Bibox_V2) placeOrder(amount, price string, pair CurrencyPair, orderType string) (string, error) {
 	path := "/v1/order/orders/place"
 	params := url.Values{}
 	params.Set("account-id", hbV2.accountId)
@@ -145,7 +145,7 @@ func (hbV2 *HuoBi_V2) placeOrder(amount, price string, pair CurrencyPair, orderT
 	return respmap["data"].(string), nil
 }
 
-func (hbV2 *HuoBi_V2) LimitBuy(amount, price string, currency CurrencyPair) (*Order, error) {
+func (hbV2 *Bibox_V2) LimitBuy(amount, price string, currency CurrencyPair) (*Order, error) {
 	orderId, err := hbV2.placeOrder(amount, price, currency, "buy-limit")
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func (hbV2 *HuoBi_V2) LimitBuy(amount, price string, currency CurrencyPair) (*Or
 		Side:     BUY}, nil
 }
 
-func (hbV2 *HuoBi_V2) LimitSell(amount, price string, currency CurrencyPair) (*Order, error) {
+func (hbV2 *Bibox_V2) LimitSell(amount, price string, currency CurrencyPair) (*Order, error) {
 	orderId, err := hbV2.placeOrder(amount, price, currency, "sell-limit")
 	if err != nil {
 		return nil, err
@@ -173,7 +173,7 @@ func (hbV2 *HuoBi_V2) LimitSell(amount, price string, currency CurrencyPair) (*O
 		Side:     SELL}, nil
 }
 
-func (hbV2 *HuoBi_V2) MarketBuy(amount, price string, currency CurrencyPair) (*Order, error) {
+func (hbV2 *Bibox_V2) MarketBuy(amount, price string, currency CurrencyPair) (*Order, error) {
 	orderId, err := hbV2.placeOrder(amount, price, currency, "buy-market")
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ func (hbV2 *HuoBi_V2) MarketBuy(amount, price string, currency CurrencyPair) (*O
 		Side:     BUY_MARKET}, nil
 }
 
-func (hbV2 *HuoBi_V2) MarketSell(amount, price string, currency CurrencyPair) (*Order, error) {
+func (hbV2 *Bibox_V2) MarketSell(amount, price string, currency CurrencyPair) (*Order, error) {
 	orderId, err := hbV2.placeOrder(amount, price, currency, "sell-market")
 	if err != nil {
 		return nil, err
@@ -201,7 +201,7 @@ func (hbV2 *HuoBi_V2) MarketSell(amount, price string, currency CurrencyPair) (*
 		Side:     SELL_MARKET}, nil
 }
 
-func (hbV2 *HuoBi_V2) parseOrder(ordmap map[string]interface{}) Order {
+func (hbV2 *Bibox_V2) parseOrder(ordmap map[string]interface{}) Order {
 	ord := Order{
 		OrderID:    ToInt(ordmap["id"]),
 		OrderID2:   fmt.Sprint(ToInt(ordmap["id"])),
@@ -244,7 +244,7 @@ func (hbV2 *HuoBi_V2) parseOrder(ordmap map[string]interface{}) Order {
 	return ord
 }
 
-func (hbV2 *HuoBi_V2) GetOneOrder(orderId string, currency CurrencyPair) (*Order, error) {
+func (hbV2 *Bibox_V2) GetOneOrder(orderId string, currency CurrencyPair) (*Order, error) {
 	path := "/v1/order/orders/" + orderId
 	params := url.Values{}
 	hbV2.buildPostForm("GET", path, &params)
@@ -264,7 +264,7 @@ func (hbV2 *HuoBi_V2) GetOneOrder(orderId string, currency CurrencyPair) (*Order
 	return &order, nil
 }
 
-func (hbV2 *HuoBi_V2) GetUnfinishOrders(currency CurrencyPair) ([]Order, error) {
+func (hbV2 *Bibox_V2) GetUnfinishOrders(currency CurrencyPair) ([]Order, error) {
 	return hbV2.getOrders(queryOrdersParams{
 		pair:   currency,
 		states: "pre-submitted,submitted,partial-filled",
@@ -273,7 +273,7 @@ func (hbV2 *HuoBi_V2) GetUnfinishOrders(currency CurrencyPair) ([]Order, error) 
 	})
 }
 
-func (hbV2 *HuoBi_V2) CancelOrder(orderId string, currency CurrencyPair) (bool, error) {
+func (hbV2 *Bibox_V2) CancelOrder(orderId string, currency CurrencyPair) (bool, error) {
 	path := fmt.Sprintf("/v1/order/orders/%s/submitcancel", orderId)
 	params := url.Values{}
 	hbV2.buildPostForm("POST", path, &params)
@@ -296,7 +296,7 @@ func (hbV2 *HuoBi_V2) CancelOrder(orderId string, currency CurrencyPair) (bool, 
 	return true, nil
 }
 
-func (hbV2 *HuoBi_V2) GetOrderHistorys(currency CurrencyPair, currentPage, pageSize int) ([]Order, error) {
+func (hbV2 *Bibox_V2) GetOrderHistorys(currency CurrencyPair, currentPage, pageSize int) ([]Order, error) {
 	return hbV2.getOrders(queryOrdersParams{
 		pair:   currency,
 		size:   pageSize,
@@ -316,7 +316,7 @@ type queryOrdersParams struct {
 	pair CurrencyPair
 }
 
-func (hbV2 *HuoBi_V2) getOrders(queryparams queryOrdersParams) ([]Order, error) {
+func (hbV2 *Bibox_V2) getOrders(queryparams queryOrdersParams) ([]Order, error) {
 	path := "/v1/order/orders"
 	params := url.Values{}
 	params.Set("symbol", strings.ToLower(queryparams.pair.ToSymbol("")))
@@ -352,11 +352,11 @@ func (hbV2 *HuoBi_V2) getOrders(queryparams queryOrdersParams) ([]Order, error) 
 	return orders, nil
 }
 
-func (hbV2 *HuoBi_V2) GetExchangeName() string {
+func (hbV2 *Bibox_V2) GetExchangeName() string {
 	return "huobi.com"
 }
 
-func (hbV2 *HuoBi_V2) GetTicker(currencyPair CurrencyPair) (*Ticker, error) {
+func (hbV2 *Bibox_V2) GetTicker(currencyPair CurrencyPair) (*Ticker, error) {
 	url := hbV2.baseUrl + "/market/detail/merged?symbol=" + strings.ToLower(currencyPair.ToSymbol(""))
 	respmap, err := HttpGet(hbV2.httpClient, url)
 	if err != nil {
@@ -392,7 +392,7 @@ func (hbV2 *HuoBi_V2) GetTicker(currencyPair CurrencyPair) (*Ticker, error) {
 	return ticker, nil
 }
 
-func (hbV2 *HuoBi_V2) GetDepth(size int, currency CurrencyPair) (*Depth, error) {
+func (hbV2 *Bibox_V2) GetDepth(size int, currency CurrencyPair) (*Depth, error) {
 	url := hbV2.baseUrl + "/market/depth?symbol=%s&type=step0"
 	respmap, err := HttpGet(hbV2.httpClient, fmt.Sprintf(url, strings.ToLower(currency.ToSymbol(""))))
 	if err != nil {
@@ -439,16 +439,16 @@ func (hbV2 *HuoBi_V2) GetDepth(size int, currency CurrencyPair) (*Depth, error) 
 	return depth, nil
 }
 
-func (hbV2 *HuoBi_V2) GetKlineRecords(currency CurrencyPair, period, size, since int) ([]Kline, error) {
+func (hbV2 *Bibox_V2) GetKlineRecords(currency CurrencyPair, period, size, since int) ([]Kline, error) {
 	panic("not implement")
 }
 
 //非个人，整个交易所的交易记录
-func (hbV2 *HuoBi_V2) GetTrades(currencyPair CurrencyPair, since int64) ([]Trade, error) {
+func (hbV2 *Bibox_V2) GetTrades(currencyPair CurrencyPair, since int64) ([]Trade, error) {
 	panic("not implement")
 }
 
-func (hbV2 *HuoBi_V2) buildPostForm(reqMethod, path string, postForm *url.Values) error {
+func (hbV2 *Bibox_V2) buildPostForm(reqMethod, path string, postForm *url.Values) error {
 	postForm.Set("AccessKeyId", hbV2.accessKey)
 	postForm.Set("SignatureMethod", "HmacSHA256")
 	postForm.Set("SignatureVersion", "2")
@@ -460,7 +460,7 @@ func (hbV2 *HuoBi_V2) buildPostForm(reqMethod, path string, postForm *url.Values
 	return nil
 }
 
-func (hbV2 *HuoBi_V2) toJson(params url.Values) string {
+func (hbV2 *Bibox_V2) toJson(params url.Values) string {
 	parammap := make(map[string]string)
 	for k, v := range params {
 		parammap[k] = v[0]

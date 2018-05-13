@@ -9,13 +9,13 @@ import (
 
 var hb2 = NewV2(http.DefaultClient, "", "")
 
-func TestHuoBi_V2_GetTicker(t *testing.T) {
+func TestBibox_V2_GetTicker(t *testing.T) {
 	ticker, err := hb2.GetTicker(goex.BTS_CNY)
 	assert.Nil(t, err)
 	t.Log(ticker)
 }
 
-func TestHuoBi_V2_GetDepth(t *testing.T) {
+func TestBibox_V2_GetDepth(t *testing.T) {
 	depth, err := hb2.GetDepth(2, goex.BCC_CNY)
 	assert.Nil(t, err)
 	t.Log("asks: ", depth.AskList)
