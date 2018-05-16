@@ -26,13 +26,12 @@ type response struct {
 	Errcode string          `json:"err-code"`
 }
 
-type Body struct {
-
+type StBody struct {
 }
 
-type cmds struct {
-	cmd string `json:"cmd"`
-	body Body  `json:"body"`
+type Cmds struct {
+	Cmd string `json:"cmd"`
+	Body StBody `json:"body"`
 }
 
 func NewBibox(httpClient *http.Client, accessKey, secretKey, clientId string) *Bibox {
@@ -65,20 +64,21 @@ func (bb *Bibox) GetAccountId() (string, error) {
 }
 
 func (bb *Bibox) GetAccount() (*Account, error) {
-	path := fmt.Sprintf("user/userInfo")
-	emptyBody := Body{}
-	cmdsJ := cmds{cmd : path, body : emptyBody }
+	log.Println("GetAccount")
+	path := fmt.Sprintf("/v1/user")
+	cmdlist := fmt.Sprintf("user/userInfo")
+	emptyBody := StBody{}
+	cmdsJ := Cmds{Cmd : cmdlist, Body : emptyBody }
 	params := url.Values{}
-	params.Set("cmd", path)
 
 	c, err := json.Marshal(cmdsJ)
 	if err != nil {
-		log.Println(err)
+		log.Println("error:", err)
 		return nil, err
 	}
 
-	params.Set("body", string(c[:]))
-	bb.buildPostForm(&params)
+	log.Println("body=" + string(c) + ", "+ string(c[:]))
+	bb.buildPostForm(&params, string(c))
 
 	urlStr := bb.baseUrl + path
 
@@ -490,10 +490,10 @@ func (bb *Bibox) GetTrades(currencyPair CurrencyPair, since int64) ([]Trade, err
 	panic("not implement")
 }
 
-func (bb *Bibox) buildPostForm(postForm *url.Values) error {
+func (bb *Bibox) buildPostForm(postForm *url.Values,postCMDS string) error {
 	postForm.Set("apikey", bb.accessKey)
-	log.Println("postForm="+postForm.Encode())
-	postForm.Set("cmds", postForm.Encode())
+	log.Println("postForm="+postCMDS)
+	postForm.Set("cmds", postCMDS)
 	sign, err := GetParamHmacMD5Sign(bb.secretKey, postForm.Encode())
 	if err != nil {
 		return err
