@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	. "github.com/nntaoli-project/GoEx"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
-type Bibox struct {
+type Coineal struct {
 	httpClient *http.Client
 	accountId,
 	baseUrl,
@@ -26,65 +26,47 @@ type response struct {
 	Errcode string          `json:"err-code"`
 }
 
-type Body struct {
-
+func NewCoineal(httpClient *http.Client, accessKey, secretKey, clientId string) *Coineal {
+	return &Coineal{httpClient, clientId, "https://api.bibox.com", accessKey, secretKey}
 }
 
-type cmds struct {
-	cmd string `json:"cmd"`
-	body Body  `json:"body"`
-}
+func (bb *Coineal) GetAccountId() (string, error) {
+	path := "/v1/account/accounts"
+	params := &url.Values{}
+	bb.buildPostForm("GET", path, params)
 
-func NewBibox(httpClient *http.Client, accessKey, secretKey, clientId string) *Bibox {
-	return &Bibox{httpClient, clientId, "https://api.bibox.com", accessKey, secretKey}
-}
+	//log.Println(bb.baseUrl + path + "?" + params.Encode())
 
-func (bb *Bibox) GetAccountId() (string, error) {
-	// path := "/v1/account/accounts"
-	// params := &url.Values{}
-	// bb.buildPostForm("GET", path, params)
-
-	// //log.Println(bb.baseUrl + path + "?" + params.Encode())
-
-	// respmap, err := HttpGet(bb.httpClient, bb.baseUrl+path+"?"+params.Encode())
-	// if err != nil {
-	// 	return "", err
-	// }
-	// //log.Println(respmap)
-	// if respmap["status"].(string) != "ok" {
-	// 	return "", errors.New(respmap["err-code"].(string))
-	// }
-
-	// data := respmap["data"].([]interface{})
-	// accountIdMap := data[0].(map[string]interface{})
-	// bb.accountId = fmt.Sprintf("%.f", accountIdMap["id"].(float64))
-
-	// //log.Println(respmap)
-	// return bb.accountId, nil
-	return "", nil
-}
-
-func (bb *Bibox) GetAccount() (*Account, error) {
-	path := fmt.Sprintf("user/userInfo")
-	emptyBody := Body{}
-	cmdsJ := cmds{cmd : path, body : emptyBody }
-	params := url.Values{}
-	params.Set("cmd", path)
-
-	c, err := json.Marshal(cmdsJ)
+	respmap, err := HttpGet(bb.httpClient, bb.baseUrl+path+"?"+params.Encode())
 	if err != nil {
-		log.Println(err)
-		return nil, err
+		return "", err
+	}
+	//log.Println(respmap)
+	if respmap["status"].(string) != "ok" {
+		return "", errors.New(respmap["err-code"].(string))
 	}
 
-	params.Set("body", string(c[:]))
-	bb.buildPostForm(&params)
+	data := respmap["data"].([]interface{})
+	accountIdMap := data[0].(map[string]interface{})
+	bb.accountId = fmt.Sprintf("%.f", accountIdMap["id"].(float64))
+
+	//log.Println(respmap)
+	return bb.accountId, nil
+}
+
+func (bb *Coineal) GetAccount() (*Account, error) {
+	path := fmt.Sprintf("user/userInfo")
+	body := &url.Values{}
+	params := &url.Values{}
+	params.Set("cmd", path)
+	params.Set("body", body)
+	bb.buildPostForm(params)
 
 	urlStr := bb.baseUrl + path
 
 	log.Println("urlStr=%v",urlStr)
 
-	bodyData, err := HttpPostForm(bb.httpClient, urlStr, params)
+	bodyData, err := HttpPostForm(hb.httpClient, urlStr, postData)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -150,42 +132,41 @@ func (bb *Bibox) GetAccount() (*Account, error) {
 	return acc, nil
 }
 
-func (bb *Bibox) placeOrder(amount, price string, pair CurrencyPair, orderType string) (string, error) {
-	// path := "/v1/order/orders/place"
-	// params := url.Values{}
-	// params.Set("account-id", bb.accountId)
-	// params.Set("amount", amount)
-	// params.Set("symbol", strings.ToLower(pair.ToSymbol("")))
-	// params.Set("type", orderType)
+func (bb *Coineal) placeOrder(amount, price string, pair CurrencyPair, orderType string) (string, error) {
+	path := "/v1/order/orders/place"
+	params := url.Values{}
+	params.Set("account-id", bb.accountId)
+	params.Set("amount", amount)
+	params.Set("symbol", strings.ToLower(pair.ToSymbol("")))
+	params.Set("type", orderType)
 
-	// switch orderType {
-	// case "buy-limit", "sell-limit":
-	// 	params.Set("price", price)
-	// }
+	switch orderType {
+	case "buy-limit", "sell-limit":
+		params.Set("price", price)
+	}
 
-	// bb.buildPostForm("POST", path, &params)
+	bb.buildPostForm("POST", path, &params)
 
-	// resp, err := HttpPostForm3(bb.httpClient, bb.baseUrl+path+"?"+params.Encode(), bb.toJson(params),
-	// 	map[string]string{"Content-Type": "application/json", "Accept-Language": "zh-cn"})
-	// if err != nil {
-	// 	return "", err
-	// }
+	resp, err := HttpPostForm3(bb.httpClient, bb.baseUrl+path+"?"+params.Encode(), bb.toJson(params),
+		map[string]string{"Content-Type": "application/json", "Accept-Language": "zh-cn"})
+	if err != nil {
+		return "", err
+	}
 
-	// respmap := make(map[string]interface{})
-	// err = json.Unmarshal(resp, &respmap)
-	// if err != nil {
-	// 	return "", err
-	// }
+	respmap := make(map[string]interface{})
+	err = json.Unmarshal(resp, &respmap)
+	if err != nil {
+		return "", err
+	}
 
-	// if respmap["status"].(string) != "ok" {
-	// 	return "", errors.New(respmap["err-code"].(string))
-	// }
+	if respmap["status"].(string) != "ok" {
+		return "", errors.New(respmap["err-code"].(string))
+	}
 
-	// return respmap["data"].(string), nil
-	return "", nil
+	return respmap["data"].(string), nil
 }
 
-func (bb *Bibox) LimitBuy(amount, price string, currency CurrencyPair) (*Order, error) {
+func (bb *Coineal) LimitBuy(amount, price string, currency CurrencyPair) (*Order, error) {
 	orderId, err := bb.placeOrder(amount, price, currency, "buy-limit")
 	if err != nil {
 		return nil, err
@@ -199,7 +180,7 @@ func (bb *Bibox) LimitBuy(amount, price string, currency CurrencyPair) (*Order, 
 		Side:     BUY}, nil
 }
 
-func (bb *Bibox) LimitSell(amount, price string, currency CurrencyPair) (*Order, error) {
+func (bb *Coineal) LimitSell(amount, price string, currency CurrencyPair) (*Order, error) {
 	orderId, err := bb.placeOrder(amount, price, currency, "sell-limit")
 	if err != nil {
 		return nil, err
@@ -213,7 +194,7 @@ func (bb *Bibox) LimitSell(amount, price string, currency CurrencyPair) (*Order,
 		Side:     SELL}, nil
 }
 
-func (bb *Bibox) MarketBuy(amount, price string, currency CurrencyPair) (*Order, error) {
+func (bb *Coineal) MarketBuy(amount, price string, currency CurrencyPair) (*Order, error) {
 	orderId, err := bb.placeOrder(amount, price, currency, "buy-market")
 	if err != nil {
 		return nil, err
@@ -227,7 +208,7 @@ func (bb *Bibox) MarketBuy(amount, price string, currency CurrencyPair) (*Order,
 		Side:     BUY_MARKET}, nil
 }
 
-func (bb *Bibox) MarketSell(amount, price string, currency CurrencyPair) (*Order, error) {
+func (bb *Coineal) MarketSell(amount, price string, currency CurrencyPair) (*Order, error) {
 	orderId, err := bb.placeOrder(amount, price, currency, "sell-market")
 	if err != nil {
 		return nil, err
@@ -241,7 +222,7 @@ func (bb *Bibox) MarketSell(amount, price string, currency CurrencyPair) (*Order
 		Side:     SELL_MARKET}, nil
 }
 
-func (bb *Bibox) parseOrder(ordmap map[string]interface{}) Order {
+func (bb *Coineal) parseOrder(ordmap map[string]interface{}) Order {
 	ord := Order{
 		OrderID:    ToInt(ordmap["id"]),
 		OrderID2:   fmt.Sprint(ToInt(ordmap["id"])),
@@ -284,28 +265,27 @@ func (bb *Bibox) parseOrder(ordmap map[string]interface{}) Order {
 	return ord
 }
 
-func (bb *Bibox) GetOneOrder(orderId string, currency CurrencyPair) (*Order, error) {
-	// path := "/v1/order/orders/" + orderId
-	// params := url.Values{}
-	// bb.buildPostForm("GET", path, &params)
-	// respmap, err := HttpGet(bb.httpClient, bb.baseUrl+path+"?"+params.Encode())
-	// if err != nil {
-	// 	return nil, err
-	// }
+func (bb *Coineal) GetOneOrder(orderId string, currency CurrencyPair) (*Order, error) {
+	path := "/v1/order/orders/" + orderId
+	params := url.Values{}
+	bb.buildPostForm("GET", path, &params)
+	respmap, err := HttpGet(bb.httpClient, bb.baseUrl+path+"?"+params.Encode())
+	if err != nil {
+		return nil, err
+	}
 
-	// if respmap["status"].(string) != "ok" {
-	// 	return nil, errors.New(respmap["err-code"].(string))
-	// }
+	if respmap["status"].(string) != "ok" {
+		return nil, errors.New(respmap["err-code"].(string))
+	}
 
-	// datamap := respmap["data"].(map[string]interface{})
-	// order := bb.parseOrder(datamap)
-	// order.Currency = currency
-	// //log.Println(respmap)
-	// return &order, nil
-	return nil, nil
+	datamap := respmap["data"].(map[string]interface{})
+	order := bb.parseOrder(datamap)
+	order.Currency = currency
+	//log.Println(respmap)
+	return &order, nil
 }
 
-func (bb *Bibox) GetUnfinishOrders(currency CurrencyPair) ([]Order, error) {
+func (bb *Coineal) GetUnfinishOrders(currency CurrencyPair) ([]Order, error) {
 	return bb.getOrders(queryOrdersParams{
 		pair:   currency,
 		states: "pre-submitted,submitted,partial-filled",
@@ -314,30 +294,30 @@ func (bb *Bibox) GetUnfinishOrders(currency CurrencyPair) ([]Order, error) {
 	})
 }
 
-func (bb *Bibox) CancelOrder(orderId string, currency CurrencyPair) (bool, error) {
-	// path := fmt.Sprintf("/v1/order/orders/%s/submitcancel", orderId)
-	// params := url.Values{}
-	// bb.buildPostForm("POST", path, &params)
-	// resp, err := HttpPostForm3(bb.httpClient, bb.baseUrl+path+"?"+params.Encode(), bb.toJson(params),
-	// 	map[string]string{"Content-Type": "application/json", "Accept-Language": "zh-cn"})
-	// if err != nil {
-	// 	return false, err
-	// }
+func (bb *Coineal) CancelOrder(orderId string, currency CurrencyPair) (bool, error) {
+	path := fmt.Sprintf("/v1/order/orders/%s/submitcancel", orderId)
+	params := url.Values{}
+	bb.buildPostForm("POST", path, &params)
+	resp, err := HttpPostForm3(bb.httpClient, bb.baseUrl+path+"?"+params.Encode(), bb.toJson(params),
+		map[string]string{"Content-Type": "application/json", "Accept-Language": "zh-cn"})
+	if err != nil {
+		return false, err
+	}
 
-	// var respmap map[string]interface{}
-	// err = json.Unmarshal(resp, &respmap)
-	// if err != nil {
-	// 	return false, err
-	// }
+	var respmap map[string]interface{}
+	err = json.Unmarshal(resp, &respmap)
+	if err != nil {
+		return false, err
+	}
 
-	// if respmap["status"].(string) != "ok" {
-	// 	return false, errors.New(string(resp))
-	// }
+	if respmap["status"].(string) != "ok" {
+		return false, errors.New(string(resp))
+	}
 
 	return true, nil
 }
 
-func (bb *Bibox) GetOrderHistorys(currency CurrencyPair, currentPage, pageSize int) ([]Order, error) {
+func (bb *Coineal) GetOrderHistorys(currency CurrencyPair, currentPage, pageSize int) ([]Order, error) {
 	return bb.getOrders(queryOrdersParams{
 		pair:   currency,
 		size:   pageSize,
@@ -357,48 +337,47 @@ type queryOrdersParams struct {
 	pair CurrencyPair
 }
 
-func (bb *Bibox) getOrders(queryparams queryOrdersParams) ([]Order, error) {
-	// path := "/v1/order/orders"
-	// params := url.Values{}
-	// params.Set("symbol", strings.ToLower(queryparams.pair.ToSymbol("")))
-	// params.Set("states", queryparams.states)
+func (bb *Coineal) getOrders(queryparams queryOrdersParams) ([]Order, error) {
+	path := "/v1/order/orders"
+	params := url.Values{}
+	params.Set("symbol", strings.ToLower(queryparams.pair.ToSymbol("")))
+	params.Set("states", queryparams.states)
 
-	// if queryparams.direct != "" {
-	// 	params.Set("direct", queryparams.direct)
-	// }
+	if queryparams.direct != "" {
+		params.Set("direct", queryparams.direct)
+	}
 
-	// if queryparams.size > 0 {
-	// 	params.Set("size", fmt.Sprint(queryparams.size))
-	// }
+	if queryparams.size > 0 {
+		params.Set("size", fmt.Sprint(queryparams.size))
+	}
 
-	// bb.buildPostForm("GET", path, &params)
-	// respmap, err := HttpGet(bb.httpClient, fmt.Sprintf("%s%s?%s", bb.baseUrl, path, params.Encode()))
-	// if err != nil {
-	// 	return nil, err
-	// }
+	bb.buildPostForm("GET", path, &params)
+	respmap, err := HttpGet(bb.httpClient, fmt.Sprintf("%s%s?%s", bb.baseUrl, path, params.Encode()))
+	if err != nil {
+		return nil, err
+	}
 
-	// if respmap["status"].(string) != "ok" {
-	// 	return nil, errors.New(respmap["err-code"].(string))
-	// }
+	if respmap["status"].(string) != "ok" {
+		return nil, errors.New(respmap["err-code"].(string))
+	}
 
-	// datamap := respmap["data"].([]interface{})
-	// var orders []Order
-	// for _, v := range datamap {
-	// 	ordmap := v.(map[string]interface{})
-	// 	ord := bb.parseOrder(ordmap)
-	// 	ord.Currency = queryparams.pair
-	// 	orders = append(orders, ord)
-	// }
+	datamap := respmap["data"].([]interface{})
+	var orders []Order
+	for _, v := range datamap {
+		ordmap := v.(map[string]interface{})
+		ord := bb.parseOrder(ordmap)
+		ord.Currency = queryparams.pair
+		orders = append(orders, ord)
+	}
 
-	// return orders, nil
-	return nil, nil
+	return orders, nil
 }
 
-func (bb *Bibox) GetExchangeName() string {
+func (bb *Coineal) GetExchangeName() string {
 	return "huobi.com"
 }
 
-func (bb *Bibox) GetTicker(currencyPair CurrencyPair) (*Ticker, error) {
+func (bb *Coineal) GetTicker(currencyPair CurrencyPair) (*Ticker, error) {
 	url := bb.baseUrl + "/market/detail/merged?symbol=" + strings.ToLower(currencyPair.ToSymbol(""))
 	respmap, err := HttpGet(bb.httpClient, url)
 	if err != nil {
@@ -434,7 +413,7 @@ func (bb *Bibox) GetTicker(currencyPair CurrencyPair) (*Ticker, error) {
 	return ticker, nil
 }
 
-func (bb *Bibox) GetDepth(size int, currency CurrencyPair) (*Depth, error) {
+func (bb *Coineal) GetDepth(size int, currency CurrencyPair) (*Depth, error) {
 	url := bb.baseUrl + "/market/depth?symbol=%s&type=step0"
 	respmap, err := HttpGet(bb.httpClient, fmt.Sprintf(url, strings.ToLower(currency.ToSymbol(""))))
 	if err != nil {
@@ -481,19 +460,18 @@ func (bb *Bibox) GetDepth(size int, currency CurrencyPair) (*Depth, error) {
 	return depth, nil
 }
 
-func (bb *Bibox) GetKlineRecords(currency CurrencyPair, period, size, since int) ([]Kline, error) {
+func (bb *Coineal) GetKlineRecords(currency CurrencyPair, period, size, since int) ([]Kline, error) {
 	panic("not implement")
 }
 
 //非个人，整个交易所的交易记录
-func (bb *Bibox) GetTrades(currencyPair CurrencyPair, since int64) ([]Trade, error) {
+func (bb *Coineal) GetTrades(currencyPair CurrencyPair, since int64) ([]Trade, error) {
 	panic("not implement")
 }
 
-func (bb *Bibox) buildPostForm(postForm *url.Values) error {
+func (bb *Coineal) buildPostForm(postForm *url.Values) error {
 	postForm.Set("apikey", bb.accessKey)
-	log.Println("postForm="+postForm.Encode())
-	postForm.Set("cmds", postForm.Encode())
+	postForm.Set("cmds", postForm)
 	sign, err := GetParamHmacMD5Sign(bb.secretKey, postForm.Encode())
 	if err != nil {
 		return err
@@ -502,7 +480,7 @@ func (bb *Bibox) buildPostForm(postForm *url.Values) error {
 	return nil
 }
 
-func (bb *Bibox) toJson(params url.Values) string {
+func (bb *Coineal) toJson(params url.Values) string {
 	parammap := make(map[string]string)
 	for k, v := range params {
 		parammap[k] = v[0]
