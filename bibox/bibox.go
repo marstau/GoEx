@@ -8,7 +8,6 @@ import (
 	. "github.com/marstau/GoEx"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 type Bibox struct {
@@ -27,6 +26,7 @@ type response struct {
 }
 
 type StBody struct {
+	Pair string  `json:"pair"`
 }
 
 type Cmds struct {
@@ -161,7 +161,7 @@ func (bb *Bibox) GetAccount() (*Account, error) {
 	resultMap := bodyDataMap["result"].([]interface{})[0].(map[string]interface{})
 
 	list := resultMap["result"].([]interface{})
-	log.Println(list)
+	// log.Println(list)
 	acc := new(Account)
 	acc.SubAccounts = make(map[Currency]SubAccount, 6)
 	acc.Exchange = bb.GetExchangeName()
@@ -435,87 +435,178 @@ func (bb *Bibox) GetExchangeName() string {
 	return "bibox.com"
 }
 
+// map[
+// last:0.00000393
+// last_usd:0.03
+// last_cny:0.19
+// high:0.00000423
+// sell:0.00000397
+// sell_amount:558.0848
+// vol:1304725
+// pair:MT_BTC
+// timestamp:1.526549490466e+12
+// percent:+1.29%
+// buy:0.00000393
+// buy_amount:3917.4615
+// low:0.00000379
+// ]
 func (bb *Bibox) GetTicker(currencyPair CurrencyPair) (*Ticker, error) {
-	url := bb.baseUrl + "/market/detail/merged?symbol=" + strings.ToLower(currencyPair.ToSymbol(""))
-	respmap, err := HttpGet(bb.httpClient, url)
+	path := fmt.Sprintf("/v1/mdata")
+	cmdlist := fmt.Sprintf("api/ticker")
+	body := StBody{Pair : "MT_BTC"}
+	cmdsJ := Cmds{Cmd : cmdlist, Body : body }
+	params := url.Values{}
+
+	c, err := json.Marshal(cmdsJ)
 	if err != nil {
+		log.Println("error:", err)
 		return nil, err
 	}
 
-	if respmap["status"].(string) == "error" {
-		return nil, errors.New(respmap["err-msg"].(string))
+	log.Println("body=" + string(c) + ", "+ string(c[:]))
+	bb.buildPostForm(&params, string(c))
+
+	urlStr := bb.baseUrl + path
+
+	log.Println("urlStr=",urlStr)
+
+	bodyData, err := HttpPostForm(bb.httpClient, urlStr, params)
+	if err != nil {
+		log.Println("error:", err)
+		return nil, err
 	}
 
-	tickmap, ok := respmap["tick"].(map[string]interface{})
+	var bodyDataMap map[string]interface{}
+	err = json.Unmarshal(bodyData, &bodyDataMap)
+	if err != nil {
+		println(string(bodyData))
+		return nil, err
+	}
+
+	resultMap := bodyDataMap["result"].([]interface{})[0].(map[string]interface{})
+
+	tickmap, ok := resultMap["result"].(map[string]interface{})
 	if !ok {
 		return nil, errors.New("tick assert error")
 	}
 
 	ticker := new(Ticker)
-	ticker.Vol = ToFloat64(tickmap["amount"])
+	ticker.Vol = ToFloat64(tickmap["vol"])
 	ticker.Low = ToFloat64(tickmap["low"])
 	ticker.High = ToFloat64(tickmap["high"])
-	bid, isOk := tickmap["bid"].([]interface{})
-	if isOk != true {
-		return nil, errors.New("no bid")
-	}
-	ask, isOk := tickmap["ask"].([]interface{})
-	if isOk != true {
-		return nil, errors.New("no ask")
-	}
-	ticker.Buy = ToFloat64(bid[0])
-	ticker.Sell = ToFloat64(ask[0])
-	ticker.Last = ToFloat64(tickmap["close"])
-	ticker.Date = ToUint64(respmap["ts"])
+	ticker.Buy = ToFloat64(tickmap["buy"])
+	ticker.Sell = ToFloat64(tickmap["sell"])
+	ticker.Last = ToFloat64(tickmap["last"])
+	ticker.Date = ToUint64(respmap["timestamp"])
 
-	return ticker, nil
+	return nil, ticker
 }
 
 func (bb *Bibox) GetDepth(size int, currency CurrencyPair) (*Depth, error) {
-	url := bb.baseUrl + "/market/depth?symbol=%s&type=step0"
-	respmap, err := HttpGet(bb.httpClient, fmt.Sprintf(url, strings.ToLower(currency.ToSymbol(""))))
+	path := fmt.Sprintf("/v1/mdata")
+	cmdlist := fmt.Sprintf("api/market")
+	emptyBody := StBody{}
+	cmdsJ := Cmds{Cmd : cmdlist, Body : emptyBody }
+	params := url.Values{}
+
+	c, err := json.Marshal(cmdsJ)
 	if err != nil {
+		log.Println("error:", err)
 		return nil, err
 	}
 
-	if "ok" != respmap["status"].(string) {
-		return nil, errors.New(respmap["err-msg"].(string))
+	log.Println("body=" + string(c) + ", "+ string(c[:]))
+	bb.buildPostForm(&params, string(c))
+
+	urlStr := bb.baseUrl + path
+
+	log.Println("urlStr=",urlStr)
+
+	bodyData, err := HttpPostForm(bb.httpClient, urlStr, params)
+	if err != nil {
+		log.Println("error:", err)
+		return nil, err
 	}
 
-	tick, _ := respmap["tick"].(map[string]interface{})
-	bids, _ := tick["bids"].([]interface{})
-	asks, _ := tick["asks"].([]interface{})
+	var bodyDataMap map[string]interface{}
+	err = json.Unmarshal(bodyData, &bodyDataMap)
+	if err != nil {
+		println(string(bodyData))
+		return nil, err
+	}
 
-	depth := new(Depth)
-	_size := size
-	for _, r := range asks {
-		var dr DepthRecord
-		rr := r.([]interface{})
-		dr.Price = ToFloat64(rr[0])
-		dr.Amount = ToFloat64(rr[1])
-		depth.AskList = append(depth.AskList, dr)
+	resultMap := bodyDataMap["result"].([]interface{})[0].(map[string]interface{})
 
-		_size--
-		if _size == 0 {
-			break
+	list := resultMap["result"].([]interface{})
+	// log.Println(list)
+	acc := new(Account)
+	acc.SubAccounts = make(map[Currency]SubAccount, 6)
+	acc.Exchange = bb.GetExchangeName()
+
+	subAccMap := make(map[Currency]*SubAccount)
+
+	for _, v := range list {
+		balancemap := v.(map[string]interface{})
+		currencySymbol := balancemap["symbol"].(string)
+		currency := NewCurrency(currencySymbol, "")
+		if subAccMap[currency] == nil {
+			subAccMap[currency] = new(SubAccount)
 		}
+		subAccMap[currency].Currency = currency
+		subAccMap[currency].Amount = ToFloat64(balancemap["balance"])
+		subAccMap[currency].ForzenAmount = ToFloat64(balancemap["freeze"])
 	}
 
-	_size = size
-	for _, r := range bids {
-		var dr DepthRecord
-		rr := r.([]interface{})
-		dr.Price = ToFloat64(rr[0])
-		dr.Amount = ToFloat64(rr[1])
-		depth.BidList = append(depth.BidList, dr)
-
-		_size--
-		if _size == 0 {
-			break
-		}
+	for k, v := range subAccMap {
+		acc.SubAccounts[k] = *v
 	}
 
-	return depth, nil
+
+	// url := bb.baseUrl + "/market/depth?symbol=%s&type=step0"
+
+	// respmap, err := HttpGet(bb.httpClient, fmt.Sprintf(url, strings.ToLower(currency.ToSymbol(""))))
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// if "ok" != respmap["status"].(string) {
+	// 	return nil, errors.New(respmap["err-msg"].(string))
+	// }
+
+	// tick, _ := respmap["tick"].(map[string]interface{})
+	// bids, _ := tick["bids"].([]interface{})
+	// asks, _ := tick["asks"].([]interface{})
+
+	// depth := new(Depth)
+	// _size := size
+	// for _, r := range asks {
+	// 	var dr DepthRecord
+	// 	rr := r.([]interface{})
+	// 	dr.Price = ToFloat64(rr[0])
+	// 	dr.Amount = ToFloat64(rr[1])
+	// 	depth.AskList = append(depth.AskList, dr)
+
+	// 	_size--
+	// 	if _size == 0 {
+	// 		break
+	// 	}
+	// }
+
+	// _size = size
+	// for _, r := range bids {
+	// 	var dr DepthRecord
+	// 	rr := r.([]interface{})
+	// 	dr.Price = ToFloat64(rr[0])
+	// 	dr.Amount = ToFloat64(rr[1])
+	// 	depth.BidList = append(depth.BidList, dr)
+
+	// 	_size--
+	// 	if _size == 0 {
+	// 		break
+	// 	}
+	// }
+
+	return nil, nil
 }
 
 func (bb *Bibox) GetKlineRecords(currency CurrencyPair, period, size, since int) ([]Kline, error) {
