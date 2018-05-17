@@ -1,7 +1,7 @@
 package bibox
 
 import (
-	"github.com/nntaoli-project/GoEx"
+	"github.com/marstau/GoEx"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"

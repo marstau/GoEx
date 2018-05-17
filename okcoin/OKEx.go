@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	. "github.com/nntaoli-project/GoEx"
+	. "github.com/marstau/GoEx"
 	"io/ioutil"
 	"log"
 	"net/http"
