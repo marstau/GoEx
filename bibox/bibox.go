@@ -25,6 +25,9 @@ type response struct {
 	Errcode string          `json:"err-code"`
 }
 
+type EmptyBody struct {
+}
+
 type StBody struct {
 	Pair string  `json:"pair"`
 }
@@ -128,7 +131,7 @@ func (bb *Bibox) GetAccount() (*Account, error) {
 	log.Println("GetAccount")
 	path := fmt.Sprintf("/v1/transfer")
 	cmdlist := fmt.Sprintf("transfer/coinList")
-	emptyBody := StBody{}
+	emptyBody := EmptyBody{}
 	cmdsJ := Cmds{Cmd : cmdlist, Body : emptyBody }
 	params := url.Values{}
 
@@ -505,8 +508,8 @@ func (bb *Bibox) GetTicker(currencyPair CurrencyPair) (*Ticker, error) {
 func (bb *Bibox) GetDepth(size int, currency CurrencyPair) (*Depth, error) {
 	path := fmt.Sprintf("/v1/mdata")
 	cmdlist := fmt.Sprintf("api/market")
-	emptyBody := StBody{}
-	cmdsJ := Cmds{Cmd : cmdlist, Body : emptyBody }
+	body := StBody{Pair : "MT_BTC"}
+	cmdsJ := Cmds{Cmd : cmdlist, Body : body }
 	params := url.Values{}
 
 	c, err := json.Marshal(cmdsJ)
@@ -534,7 +537,9 @@ func (bb *Bibox) GetDepth(size int, currency CurrencyPair) (*Depth, error) {
 		println(string(bodyData))
 		return nil, err
 	}
-
+	
+	log.Println(bodyDataMap)
+	
 	resultMap := bodyDataMap["result"].([]interface{})[0].(map[string]interface{})
 
 	list := resultMap["result"].([]interface{})
