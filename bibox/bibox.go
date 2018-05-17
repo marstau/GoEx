@@ -499,7 +499,7 @@ func (bb *Bibox) GetTicker(currencyPair CurrencyPair) (*Ticker, error) {
 	ticker.Last = ToFloat64(tickmap["last"])
 	ticker.Date = ToUint64(respmap["timestamp"])
 
-	return nil, ticker
+	return ticker, nil
 }
 
 func (bb *Bibox) GetDepth(size int, currency CurrencyPair) (*Depth, error) {
