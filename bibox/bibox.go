@@ -60,13 +60,74 @@ func (bb *Bibox) GetAccountId() (string, error) {
 
 	// //log.Println(respmap)
 	// return bb.accountId, nil
+	path := fmt.Sprintf("/v1/user")
+	cmdlist := fmt.Sprintf("user/userInfo")
+	emptyBody := StBody{}
+	cmdsJ := Cmds{Cmd : cmdlist, Body : emptyBody }
+	params := url.Values{}
+
+	c, err := json.Marshal(cmdsJ)
+	if err != nil {
+		log.Println("error:", err)
+		return "", err
+	}
+
+	log.Println("body=" + string(c) + ", "+ string(c[:]))
+	bb.buildPostForm(&params, string(c))
+
+	urlStr := bb.baseUrl + path
+
+	log.Println("urlStr=",urlStr)
+
+	bodyData, err := HttpPostForm(bb.httpClient, urlStr, params)
+	if err != nil {
+		log.Println("error:", err)
+		return "", err
+	}
+
+	var bodyDataMap map[string]interface{}
+	err = json.Unmarshal(bodyData, &bodyDataMap)
+	if err != nil {
+		println(string(bodyData))
+		return "", err
+	}
+
+	log.Println(bodyDataMap)
+	
+	if bodyDataMap["code"] != nil {
+		return "", errors.New(string(bodyData))
+	}
+
+
 	return "", nil
 }
 
+// [balance:0.11237468
+// confirm_count:3
+// forbid_info:
+// supply_time:2009/1/3
+// totalBalance:0.24292026
+// id:42
+// icon_url:/appimg/BTC_icon.png
+// is_erc20:0
+// BTCValue:0.24292026
+// freeze:0.13054557
+// enable_deposit:1
+// describe_summary:[{"lang":"zh-cn","text":"Bitcoin 比特币的概念最初由中本聪在2009年提出，是点对点的基于 SHA-256 算法的一种P2P形式的数字货币，点对点的传输意味着一个去中心化的支付系统。"},{"lang":"en-ww","text":"Bitcoin is a digital asset and a payment system invented by Satoshi Nakamoto who published a related paper in 2008 and released it as open-source software in 2009. The system featured as peer-to-peer; users can transact directly without an intermediary."}]
+// price:--
+// describe_url:[{"lang":"zh-cn","link":"https://bibox.zendesk.com/hc/zh-cn/articles/115004798214"},{"lang":"en-ww","link":"https://bibox.zendesk.com/hc/en-us/articles/115004798214"}]
+// name:Bitcoin
+// enable_withdraw:1
+// total_amount:2.1e+07
+// supply_amount:1.6818187e+07
+// CNYValue:12927.64793111
+// USDValue:2027.44302504
+// symbol:BTC]
+
 func (bb *Bibox) GetAccount() (*Account, error) {
 	log.Println("GetAccount")
-	path := fmt.Sprintf("/v1/user")
-	cmdlist := fmt.Sprintf("user/userInfo")
+	path := fmt.Sprintf("/v1/transfer")
+	cmdlist := fmt.Sprintf("transfer/coinList")
 	emptyBody := StBody{}
 	cmdsJ := Cmds{Cmd : cmdlist, Body : emptyBody }
 	params := url.Values{}
@@ -82,11 +143,11 @@ func (bb *Bibox) GetAccount() (*Account, error) {
 
 	urlStr := bb.baseUrl + path
 
-	log.Println("urlStr=%v",urlStr)
+	log.Println("urlStr=",urlStr)
 
 	bodyData, err := HttpPostForm(bb.httpClient, urlStr, params)
 	if err != nil {
-		log.Println(err)
+		log.Println("error:", err)
 		return nil, err
 	}
 
@@ -97,28 +158,10 @@ func (bb *Bibox) GetAccount() (*Account, error) {
 		return nil, err
 	}
 
-	if bodyDataMap["code"] != nil {
-		return nil, errors.New(string(bodyData))
-	}
+	resultMap := bodyDataMap["result"].([]interface{})[0].(map[string]interface{})
 
-	respmap, err := HttpGet(bb.httpClient, urlStr)
-
-	if err != nil {
-		return nil, err
-	}
-
-	//log.Println(respmap)
-
-	if respmap["status"].(string) != "ok" {
-		return nil, errors.New(respmap["err-code"].(string))
-	}
-
-	datamap := respmap["data"].(map[string]interface{})
-	if datamap["state"].(string) != "working" {
-		return nil, errors.New(datamap["state"].(string))
-	}
-
-	list := datamap["list"].([]interface{})
+	list := resultMap["result"].([]interface{})
+	log.Println(list)
 	acc := new(Account)
 	acc.SubAccounts = make(map[Currency]SubAccount, 6)
 	acc.Exchange = bb.GetExchangeName()
@@ -127,20 +170,14 @@ func (bb *Bibox) GetAccount() (*Account, error) {
 
 	for _, v := range list {
 		balancemap := v.(map[string]interface{})
-		currencySymbol := balancemap["currency"].(string)
+		currencySymbol := balancemap["symbol"].(string)
 		currency := NewCurrency(currencySymbol, "")
-		typeStr := balancemap["type"].(string)
-		balance := ToFloat64(balancemap["balance"])
 		if subAccMap[currency] == nil {
 			subAccMap[currency] = new(SubAccount)
 		}
 		subAccMap[currency].Currency = currency
-		switch typeStr {
-		case "trade":
-			subAccMap[currency].Amount = balance
-		case "frozen":
-			subAccMap[currency].ForzenAmount = balance
-		}
+		subAccMap[currency].Amount = ToFloat64(balancemap["balance"])
+		subAccMap[currency].ForzenAmount = ToFloat64(balancemap["freeze"])
 	}
 
 	for k, v := range subAccMap {
@@ -395,7 +432,7 @@ func (bb *Bibox) getOrders(queryparams queryOrdersParams) ([]Order, error) {
 }
 
 func (bb *Bibox) GetExchangeName() string {
-	return "huobi.com"
+	return "bibox.com"
 }
 
 func (bb *Bibox) GetTicker(currencyPair CurrencyPair) (*Ticker, error) {
@@ -491,13 +528,16 @@ func (bb *Bibox) GetTrades(currencyPair CurrencyPair, since int64) ([]Trade, err
 }
 
 func (bb *Bibox) buildPostForm(postForm *url.Values,postCMDS string) error {
+	log.Println("accessKey="+bb.accessKey)
 	postForm.Set("apikey", bb.accessKey)
-	log.Println("postForm="+postCMDS)
+	postCMDS = "[" + postCMDS + "]"
+	log.Println("cmds="+postCMDS)
 	postForm.Set("cmds", postCMDS)
-	sign, err := GetParamHmacMD5Sign(bb.secretKey, postForm.Encode())
+	sign, err := GetParamHmacMD5Sign(bb.secretKey, postCMDS)
 	if err != nil {
 		return err
 	}
+	log.Println("sign=",sign)
 	postForm.Set("sign", sign)
 	return nil
 }
