@@ -15,4 +15,9 @@ GoEx项目是为了统一并标准化各个数字资产交易平台的接口而�
 ### 欢迎为作者付一碗面钱
 
 eth:0x6E6dDDE24C79e94633CACAa442FadDcD41Af31Bd
+
 btc:1KaJo5bFTpFzJXSYDiFjYkHELvcQdy9NSn
+
+# Reference
+
+* <https://github.com/nntaoli-project/GoEx>

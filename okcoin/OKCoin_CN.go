@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	. "github.com/nntaoli-project/GoEx"
+	. "github.com/marstau/GoEx"
 )
 
 const (
