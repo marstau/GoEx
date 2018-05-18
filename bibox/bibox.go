@@ -25,16 +25,14 @@ type response struct {
 	Errcode string          `json:"err-code"`
 }
 
-type EmptyBody struct {
-}
-
 type StBody struct {
-	Pair string  `json:"pair"`
+	Pair    string  `json:"pair,omitempty"`
+	Select  int     `json:"select,omitempty"`
 }
 
 type Cmds struct {
-	Cmd string `json:"cmd"`
-	Body StBody `json:"body"`
+	Cmd     string  `json:"cmd"`
+	Body    StBody  `json:"body"`
 }
 
 func NewBibox(httpClient *http.Client, accessKey, secretKey, clientId string) *Bibox {
@@ -65,8 +63,8 @@ func (bb *Bibox) GetAccountId() (string, error) {
 	// return bb.accountId, nil
 	path := fmt.Sprintf("/v1/user")
 	cmdlist := fmt.Sprintf("user/userInfo")
-	emptyBody := StBody{}
-	cmdsJ := Cmds{Cmd : cmdlist, Body : emptyBody }
+	body := StBody{}
+	cmdsJ := Cmds{Cmd : cmdlist, Body : body }
 	params := url.Values{}
 
 	c, err := json.Marshal(cmdsJ)
@@ -105,6 +103,73 @@ func (bb *Bibox) GetAccountId() (string, error) {
 	return "", nil
 }
 
+
+func (bb *Bibox) GetAccount() (*Account, error) {
+	log.Println("GetAccount")
+	path := fmt.Sprintf("/v1/transfer")
+	cmdlist := fmt.Sprintf("transfer/assets")
+	body := StBody{Select : 1}
+	cmdsJ := Cmds{Cmd : cmdlist, Body : body }
+	params := url.Values{}
+
+	c, err := json.Marshal(cmdsJ)
+	if err != nil {
+		log.Println("error:", err)
+		return nil, err
+	}
+
+	log.Println("body=" + string(c) + ", "+ string(c[:]))
+	bb.buildPostForm(&params, string(c))
+
+	urlStr := bb.baseUrl + path
+
+	log.Println("urlStr=",urlStr)
+
+	bodyData, err := HttpPostForm(bb.httpClient, urlStr, params)
+	if err != nil {
+		log.Println("error:", err)
+		return nil, err
+	}
+
+	var bodyDataMap map[string]interface{}
+	err = json.Unmarshal(bodyData, &bodyDataMap)
+	if err != nil {
+		println(string(bodyData))
+		return nil, err
+	}
+
+
+	resultMap := bodyDataMap["result"].([]interface{})[0].(map[string]interface{})
+
+	list := resultMap["result"].(map[string]interface{})
+
+	acc := new(Account)
+	acc.SubAccounts = make(map[Currency]SubAccount, 6)
+	acc.Exchange = bb.GetExchangeName()
+	acc.Asset = ToFloat64(list["total_btc"])
+	acc.NetAsset = ToFloat64(list["total_cny"])
+	assets_list := list["assets_list"].([]interface{})
+	subAccMap := make(map[Currency]*SubAccount)
+
+	for _, v := range assets_list {
+		balancemap := v.(map[string]interface{})
+		currencySymbol := balancemap["coin_symbol"].(string)
+		currency := NewCurrency(currencySymbol, "")
+		if subAccMap[currency] == nil {
+			subAccMap[currency] = new(SubAccount)
+		}
+		subAccMap[currency].Currency = currency
+		subAccMap[currency].Amount = ToFloat64(balancemap["balance"])
+		subAccMap[currency].ForzenAmount = ToFloat64(balancemap["freeze"])
+	}
+
+	for k, v := range subAccMap {
+		acc.SubAccounts[k] = *v
+	}
+
+	return acc, nil
+}
+
 // [balance:0.11237468
 // confirm_count:3
 // forbid_info:
@@ -126,13 +191,12 @@ func (bb *Bibox) GetAccountId() (string, error) {
 // CNYValue:12927.64793111
 // USDValue:2027.44302504
 // symbol:BTC]
-
-func (bb *Bibox) GetAccount() (*Account, error) {
+func (bb *Bibox) GetCoinList() (*Account, error) {
 	log.Println("GetAccount")
 	path := fmt.Sprintf("/v1/transfer")
 	cmdlist := fmt.Sprintf("transfer/coinList")
-	emptyBody := EmptyBody{}
-	cmdsJ := Cmds{Cmd : cmdlist, Body : emptyBody }
+	body := StBody{}
+	cmdsJ := Cmds{Cmd : cmdlist, Body : body }
 	params := url.Values{}
 
 	c, err := json.Marshal(cmdsJ)
@@ -164,10 +228,12 @@ func (bb *Bibox) GetAccount() (*Account, error) {
 	resultMap := bodyDataMap["result"].([]interface{})[0].(map[string]interface{})
 
 	list := resultMap["result"].([]interface{})
-	// log.Println(list)
+	log.Println(list)
 	acc := new(Account)
 	acc.SubAccounts = make(map[Currency]SubAccount, 6)
 	acc.Exchange = bb.GetExchangeName()
+	// acc.Asset = bb.GetExchangeName()
+	// acc.NetAsset = bb.GetExchangeName()
 
 	subAccMap := make(map[Currency]*SubAccount)
 
@@ -500,7 +566,7 @@ func (bb *Bibox) GetTicker(currencyPair CurrencyPair) (*Ticker, error) {
 	ticker.Buy = ToFloat64(tickmap["buy"])
 	ticker.Sell = ToFloat64(tickmap["sell"])
 	ticker.Last = ToFloat64(tickmap["last"])
-	ticker.Date = ToUint64(respmap["timestamp"])
+	ticker.Date = ToUint64(tickmap["timestamp"])
 
 	return ticker, nil
 }
