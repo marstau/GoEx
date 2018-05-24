@@ -3,7 +3,7 @@ package btcmarkets
 import (
 	"errors"
 	"fmt"
-	. "github.com/nntaoli-project/GoEx"
+	. "github.com/marstau/GoEx"
 	"net/http"
 	"time"
 )

@@ -1,7 +1,7 @@
 package gdax
 
 import (
-	"github.com/nntaoli-project/GoEx"
+	"github.com/marstau/GoEx"
 	"net/http"
 	"testing"
 )

@@ -45,6 +45,8 @@ var (
 	BCD     = Currency{"BCD",""}
 	NEO     = Currency{"NEO","neo.org"}
 	HSR     = Currency{"HSR",""}
+	MT      = Currency{"MT",""}
+	EOSDAC  = Currency{"EOSDAC",""}
 
 	//currency pair
 
@@ -95,18 +97,20 @@ var (
 	ETC_JPY = CurrencyPair{ETC,JPY}
 	BCH_JPY = CurrencyPair{BCH,JPY}
 
-	LTC_BTC = CurrencyPair{LTC, BTC}
-	ETH_BTC = CurrencyPair{ETH, BTC}
-	ETC_BTC = CurrencyPair{ETC, BTC}
-	BCC_BTC = CurrencyPair{BCC, BTC}
-	BCH_BTC = CurrencyPair{BCH, BTC}
-	DCR_BTC = CurrencyPair{DCR, BTC}
-	XRP_BTC = CurrencyPair{XRP ,BTC}
-	BTG_BTC = CurrencyPair{BTG,BTC}
-	BCD_BTC = CurrencyPair{BCD,BTC}
-	NEO_BTC = CurrencyPair{NEO,BTC}
-	EOS_BTC = CurrencyPair{EOS,BTC}
-	HSR_BTC = CurrencyPair{HSR,BTC}
+	LTC_BTC     = CurrencyPair{LTC, BTC}
+	ETH_BTC     = CurrencyPair{ETH, BTC}
+	ETC_BTC     = CurrencyPair{ETC, BTC}
+	BCC_BTC     = CurrencyPair{BCC, BTC}
+	BCH_BTC     = CurrencyPair{BCH, BTC}
+	DCR_BTC     = CurrencyPair{DCR, BTC}
+	XRP_BTC     = CurrencyPair{XRP ,BTC}
+	BTG_BTC     = CurrencyPair{BTG,BTC}
+	BCD_BTC     = CurrencyPair{BCD,BTC}
+	NEO_BTC     = CurrencyPair{NEO,BTC}
+	EOS_BTC     = CurrencyPair{EOS,BTC}
+	HSR_BTC     = CurrencyPair{HSR,BTC}
+	MT_BTC      = CurrencyPair{MT,BTC}
+	EOSDAC_BTC  = CurrencyPair{EOSDAC,BTC}
 
 	ETC_ETH = CurrencyPair{ETC, ETH}
 	EOS_ETH = CurrencyPair{EOS, ETH}

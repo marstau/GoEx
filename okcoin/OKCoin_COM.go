@@ -3,7 +3,7 @@ package okcoin
 import (
 	"encoding/json"
 	"errors"
-	. "github.com/nntaoli-project/GoEx"
+	. "github.com/marstau/GoEx"
 	"net/http"
 	"net/url"
 	"strconv"
