@@ -192,7 +192,7 @@ func (bb *Bibox) GetAccount() (*Account, error) {
 // USDValue:2027.44302504
 // symbol:BTC]
 func (bb *Bibox) GetCoinList() (*Account, error) {
-	log.Println("GetAccount")
+	log.Println("GetCoinList")
 	path := fmt.Sprintf("/v1/transfer")
 	cmdlist := fmt.Sprintf("transfer/coinList")
 	body := StBody{}
