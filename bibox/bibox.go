@@ -147,7 +147,7 @@ func (bb *Bibox) GetAccount() (*Account, error) {
 	acc.SubAccounts = make(map[Currency]SubAccount, 6)
 	acc.Exchange = bb.GetExchangeName()
 	acc.Asset = ToFloat64(list["total_btc"])
-	acc.NetAsset = ToFloat64(list["total_cny"])
+	acc.NetAsset = ToFloat64(list["total_btc"])
 	assets_list := list["assets_list"].([]interface{})
 	subAccMap := make(map[Currency]*SubAccount)
 
@@ -522,7 +522,7 @@ func (bb *Bibox) GetExchangeName() string {
 func (bb *Bibox) GetTicker(currencyPair CurrencyPair) (*Ticker, error) {
 	path := fmt.Sprintf("/v1/mdata")
 	cmdlist := fmt.Sprintf("api/ticker")
-	body := StBody{Pair : "MT_BTC"}
+	body := StBody{Pair : currencyPair.ToSymbol("_")}
 	cmdsJ := Cmds{Cmd : cmdlist, Body : body }
 	params := url.Values{}
 
@@ -574,7 +574,7 @@ func (bb *Bibox) GetTicker(currencyPair CurrencyPair) (*Ticker, error) {
 func (bb *Bibox) GetDepth(size int, currency CurrencyPair) (*Depth, error) {
 	path := fmt.Sprintf("/v1/mdata")
 	cmdlist := fmt.Sprintf("api/market")
-	body := StBody{Pair : "MT_BTC"}
+	body := StBody{Pair : currency.ToSymbol("_")}
 	cmdsJ := Cmds{Cmd : cmdlist, Body : body }
 	params := url.Values{}
 
